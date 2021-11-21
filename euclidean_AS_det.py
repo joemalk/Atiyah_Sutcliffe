@@ -1,14 +1,12 @@
 # Import the necessary modules/libraries
-import numpy as np
-import sympy as sp
-from numpy import poly1d
-from scipy import linalg
-import math
 import random
 import itertools
-from sympy import symarray
-#import matplotlib.pyplot as plt
-#from mpl_toolkits.mplot3d import Axes3D
+
+import numpy as np
+from numpy import poly1d
+
+from scipy import linalg
+
 
 # compute j of a vector in C2
 def quatj(u):
@@ -42,7 +40,7 @@ def poly(u):
     if linalg.norm(u)==0:
         print("Error, the vector in C2 is 0")
         return
-    return poly1d(np.array([u[0],-u[1]]), variable="t")
+    return poly1d( np.array( [u[0], -u[1]] ) )
 
 # Compute the 2 by 2 determinant of two vectors in u and v in C2
 def det(u,v):
