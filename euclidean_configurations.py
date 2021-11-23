@@ -12,10 +12,7 @@ class EuclideanConfigurationSet:
         :param confs: configurations as an Nxnx3 or an nx3 numpy array
         """
         if self.is_valid(confs):
-            if len(confs.shape) == 2:
-                self.confs = np.expand_dims(confs, axis=0).copy()
-            else:
-                self.confs = confs.copy()
+            self.confs = confs.copy()
             self.N, self.n, _ = self.confs.shape
 
 
@@ -25,13 +22,10 @@ class EuclideanConfigurationSet:
         :return: bool
         """
         if isinstance(confs, np.ndarray):
-            if len(confs.shape) in (2, 3):
-                if confs.shape[-1] == 3:
-                    return True
-        return False
+            return (len(confs.shape) == 3) & (confs.shape[-1] == 3)
 
 
-    def AS_dets(self):
+    def AS_dets(self): #TODO: make this method able to handle confs with vertical directions
         """
         Return the AS det of the EuclideanConfiguration object
         :return: float
@@ -92,6 +86,24 @@ class EuclideanConfigurationSet:
 
             dets[k] = num_k * factor_k / den_k
 
-        if self.N == 1:
-            return dets[0]
         return dets
+
+
+class EuclideanConfiguration(EuclideanConfigurationSet):
+    """
+    Euclidean Configuration class
+    """
+    def __init__(self, conf):
+        """
+        Create a EuclideanConfiguration object corresponding to conf
+        :param conf: configurations as an nx3 numpy array
+        """
+        super().__init__(np.expand_dims(conf.copy(), 0))
+
+
+    def AS_det(self):
+        """
+        Compute the AS det of the EuclideanConfiguration object
+        :return: complex
+        """
+        return super().AS_dets()[0]
