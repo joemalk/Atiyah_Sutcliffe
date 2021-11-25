@@ -1,6 +1,5 @@
 # Import the necessary modules/libraries
 import numpy as np
-from numpy.polynomial.polynomial import Polynomial
 
 class EuclideanConfigurationSet:
     """
@@ -18,7 +17,7 @@ class EuclideanConfigurationSet:
 
     def is_valid(self, confs):
         """
-        Check if self.conf is a valid nx3 numpy array
+        Check if self.conf is a valid Nxnx3 numpy array
         :return: bool
         """
         if isinstance(confs, np.ndarray):
@@ -32,61 +31,48 @@ class EuclideanConfigurationSet:
         """
         # compute j of a vector in C2
         def quatj(u):
-            return [-u[1].conjugate(), u[0].conjugate()]
+            return np.concatenate([-u[:,1:2].conjugate(), u[:,0:1].conjugate()], axis= -1)
 
         # Compute the Hopf lifts of all pairwise directions
         def hopf_lifts():
-            hl = np.zeros((self.N, self.n, self.n, 2), dtype=np.complex)
-            norms = np.zeros((self.N, self.n, self.n), dtype=np.float)
+            hl = np.zeros((self.N, self.n, self.n - 1, 2), dtype=np.complex)
+
             for i in range(self.n - 1):
                 for j in range(i+1, self.n):
                     xs_ij = -self.confs[:, i, :] + self.confs[:, j, :]
-                    rs_ij = np.linalg.norm(xs_ij, axis=-1)
-                    for k in range(self.N):
-                        if xs_ij[k, 2] != rs_ij[k]:
-                            hopf_lift = [1., (xs_ij[k, 0] + 1.j*xs_ij[k, 1]) / (rs_ij[k] - xs_ij[k, 2])]
-                            hl[k, i, j, :] = hopf_lift
-                            norms[k, i, j] = np.linalg.norm(hopf_lift)
-                        elif xs_ij[k, 2] == rs_ij[k]:
-                            hl[k, i, j, :] = [0., -1.]
-                            norms[k, i, j] = 1.
-                        hl[k, j, i, :] = quatj(hl[k, i, j, :])
-            return hl, norms
-
-        dets = np.zeros((self.N,), dtype=np.complex)
+                    rs_ij = np.linalg.norm(xs_ij, axis=-1).reshape(-1,1)
+                    if (xs_ij[:, 2] != rs_ij[:]).all():
+                        hopf_lift = np.concatenate([np.ones((self.N,1), dtype=complex), (xs_ij[:, 0:1] + 1.j * xs_ij[:, 1:2]) / (rs_ij - xs_ij[:, 2:3])],\
+                                                   axis=-1)
+                        hl[:, i, j-1, :] = hopf_lift / np.linalg.norm(hopf_lift, axis=-1).reshape(-1,1)
+                    else:
+                        pass #TODO: implement this case
+                        # hl[k, i, j, :] = [0., -1.]
+                        # norms[k, i, j] = 1.
+                    hl[:, j, i, :] = quatj(hl[:, i, j-1, :])
+            return hl
 
         # Calculate the Hopf lifts of self.conf
-        hl, norms = hopf_lifts()
+        hl = hopf_lifts()
 
-        # loop over the set of configurations self.confs
-        for k in range(self.N):
-            # Populate the nxn matrix containing the coefficients of the AS polys
-            M = np.zeros((self.n, self.n), dtype=np.complex)
+        def poly_mul(polys_arr, linear_arr):
+            N1,n1,d1 = polys_arr.shape
+            N2,n2,d2 = linear_arr.shape
+            assert(N1 == self.N)
+            assert(n1 == self.n)
+            assert(N2 == self.N)
+            assert(n2 == self.n)
+            assert(d2 == 2)
+            prod = np.zeros((self.N, self.n, d1+1), dtype=complex)
+            prod[:,:,:-1] = linear_arr[:,:,0:1]*polys_arr
+            prod[:,:,1:] += linear_arr[:,:,1:2]*polys_arr
+            return prod
 
-            for i in range(self.n):
-                roots = []
-                for j in range(self.n):
-                    if j != i:
-                        roots.append(hl[k, i, j, 1]/hl[k, i, j, 0])
-                poly = np.polynomial.polynomial.polyfromroots(roots)
-                M[i, 0:poly.size] = poly
+        polys = np.ones((self.N, self.n, 1), dtype=complex)
+        for j in range(self.n-1):
+            polys = poly_mul(polys, hl[:,:,j,:])
 
-            num_k = np.linalg.det(M)
-
-            factor_k = 1.
-            for i in range(self.n - 1):
-                for j in range(i+1, self.n):
-                    factor_k *= hl[k, i, j, 0]
-                    factor_k *= -hl[k, i, j, 1].conjugate()
-
-            den_k = 1.
-            for i in range(self.n - 1):
-                for j in range(i+1, self.n):
-                    den_k *= norms[k, i, j]**2
-
-            dets[k] = num_k * factor_k / den_k
-
-        return dets
+        return np.linalg.det(polys)
 
 
 class EuclideanConfiguration(EuclideanConfigurationSet):

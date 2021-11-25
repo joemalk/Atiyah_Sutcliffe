@@ -13,11 +13,11 @@ for n in range(3,10):
 T1_t1 = perf_counter()
 print(f'Test 1 completed in {T1_t1-T1_t0} seconds.')
 
-N = 10000
-print(f'\nTest 2: compute AS_dets for {N} random configurations with n = 4, \
+N, n = 10000, 4
+print(f'\nTest 2: compute AS_dets for {N} random configurations with n = {n}, \
 then find the minimal real part.')
 T2_t0 = perf_counter()
-confs = np.random.random((N,4,3))
+confs = np.random.random((N,n,3))
 euc_confs = EuclideanConfigurationSet(confs)
 print(f'The minimal real part of this sample is: {min(np.real(euc_confs.AS_dets()))}')
 T2_t1 = perf_counter()
